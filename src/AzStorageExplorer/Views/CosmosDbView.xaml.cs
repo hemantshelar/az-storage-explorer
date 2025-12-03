@@ -12,12 +12,15 @@ public sealed partial class CosmosDbView : UserControl
     private readonly CosmosDbViewModel _viewModel;
     
     public event EventHandler<string>? ConnectionStringChanged;
+    public event EventHandler? QuerySaved;
+    public event EventHandler? QueryDeleted;
 
     public CosmosDbView()
     {
         this.InitializeComponent();
         _viewModel = new CosmosDbViewModel();
-        
+        this.DataContext = _viewModel;
+
         // Bind ViewModel properties to UI
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
@@ -26,9 +29,6 @@ public sealed partial class CosmosDbView : UserControl
     {
         _viewModel.Initialize(configuration, connectionString);
         ConnectionStringBox.Text = connectionString;
-        
-        // Update saved queries list
-        SavedQueriesList.ItemsSource = _viewModel.SavedQueries;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -49,20 +49,11 @@ public sealed partial class CosmosDbView : UserControl
                 case nameof(_viewModel.SelectedContainer):
                     ContainerComboBox.SelectedItem = _viewModel.SelectedContainer;
                     break;
-                case nameof(_viewModel.QueryResults):
-                    ResultsTextBlock.Text = _viewModel.QueryResults;
-                    break;
                 case nameof(_viewModel.IsLoading):
                     LoadingRing.IsActive = _viewModel.IsLoading;
                     break;
                 case nameof(_viewModel.StatusMessage):
                     StatusText.Text = _viewModel.StatusMessage;
-                    break;
-                case nameof(_viewModel.ResultCount):
-                    ResultCountText.Text = $"{_viewModel.ResultCount} items";
-                    break;
-                case nameof(_viewModel.LastRequestCharge):
-                    RequestChargeText.Text = $"RU: {_viewModel.LastRequestCharge:F2}";
                     break;
             }
         });
@@ -75,10 +66,7 @@ public sealed partial class CosmosDbView : UserControl
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.Initialize(_viewModel.SavedQueries.Any() 
-            ? new CosmosDbConfiguration { SavedQueries = _viewModel.SavedQueries.ToList() } 
-            : new CosmosDbConfiguration(), ConnectionStringBox.Text);
-        
+        _viewModel.UpdateConnectionString(ConnectionStringBox.Text);
         await _viewModel.ConnectCommand.ExecuteAsync(null);
     }
 
@@ -90,60 +78,37 @@ public sealed partial class CosmosDbView : UserControl
         }
     }
 
-    private async void ExecuteButton_Click(object sender, RoutedEventArgs e)
+    private void NewQueryButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.QueryText = QueryTextBox.Text;
-        _viewModel.SelectedContainer = ContainerComboBox.SelectedItem as string;
-        await _viewModel.ExecuteQueryCommand.ExecuteAsync(null);
+        // Get currently selected database and container as defaults
+        var database = DatabaseComboBox.SelectedItem as string ?? string.Empty;
+        var container = ContainerComboBox.SelectedItem as string ?? string.Empty;
+        _viewModel.AddNewQueryCommand.Execute((database, container));
     }
 
-    private async void SaveQueryButton_Click(object sender, RoutedEventArgs e)
+    private async void RunHistoryButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ContentDialog
+        if (sender is Button button && button.Tag is QueryResultEntry entry)
         {
-            Title = "Save Query",
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
-
-        var inputBox = new TextBox
-        {
-            PlaceholderText = "Enter query name...",
-            Margin = new Thickness(0, 12, 0, 0)
-        };
-        dialog.Content = inputBox;
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(inputBox.Text))
-        {
-            _viewModel.QueryText = QueryTextBox.Text;
-            _viewModel.SelectedContainer = ContainerComboBox.SelectedItem as string;
-            _viewModel.SaveQueryCommand.Execute(inputBox.Text);
+            await _viewModel.RunFromHistoryCommand.ExecuteAsync(entry);
         }
     }
 
-    private void SavedQueriesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void SaveHistoryButton_Click(object sender, RoutedEventArgs e)
     {
-        if (SavedQueriesList.SelectedItem is SavedQuery query)
+        if (sender is Button button && button.Tag is QueryResultEntry entry)
         {
-            _viewModel.LoadQueryCommand.Execute(query);
-            QueryTextBox.Text = query.Query;
-            
-            // Select the container if available
-            if (!string.IsNullOrEmpty(query.Container))
-            {
-                ContainerComboBox.SelectedItem = query.Container;
-            }
+            _viewModel.SaveHistoryCommand.Execute(entry);
+            QuerySaved?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    private void DeleteQueryButton_Click(object sender, RoutedEventArgs e)
+    private void DeleteHistoryButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is SavedQuery query)
+        if (sender is Button button && button.Tag is QueryResultEntry entry)
         {
-            _viewModel.DeleteQueryCommand.Execute(query);
+            _viewModel.DeleteHistoryCommand.Execute(entry);
+            QueryDeleted?.Invoke(this, EventArgs.Empty);
         }
     }
 }

@@ -10,6 +10,9 @@ public class SavedQuery
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
     
+    [JsonPropertyName("database")]
+    public string Database { get; set; } = string.Empty;
+    
     [JsonPropertyName("container")]
     public string Container { get; set; } = string.Empty;
     

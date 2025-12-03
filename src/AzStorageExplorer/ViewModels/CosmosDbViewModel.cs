@@ -33,12 +33,6 @@ public partial class CosmosDbViewModel : ObservableObject
     private string _queryResults = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<SavedQuery> _savedQueries = new();
-
-    [ObservableProperty]
-    private SavedQuery? _selectedQuery;
-
-    [ObservableProperty]
     private bool _isLoading;
 
     [ObservableProperty]
@@ -53,6 +47,9 @@ public partial class CosmosDbViewModel : ObservableObject
     [ObservableProperty]
     private int _resultCount;
 
+    [ObservableProperty]
+    private ObservableCollection<QueryResultEntry> _queryHistory = new();
+
     private string? _continuationToken;
 
     public CosmosDbViewModel()
@@ -65,11 +62,31 @@ public partial class CosmosDbViewModel : ObservableObject
         _configuration = configuration;
         _connectionString = connectionString;
         
-        SavedQueries.Clear();
-        foreach (var query in configuration.SavedQueries)
+        // Seed the query history from any saved queries in the configuration
+        QueryHistory.Clear();
+        if (configuration.SavedQueries != null)
         {
-            SavedQueries.Add(query);
+            foreach (var saved in configuration.SavedQueries)
+            {
+                // Use saved query's database, fall back to config's databaseId if empty
+                var database = !string.IsNullOrEmpty(saved.Database) 
+                    ? saved.Database 
+                    : configuration.DatabaseId;
+                    
+                QueryHistory.Add(new QueryResultEntry
+                {
+                    Database = database,
+                    Container = saved.Container,
+                    QueryText = saved.Query,
+                    SavedQuery = saved
+                });
+            }
         }
+    }
+
+    public void UpdateConnectionString(string connectionString)
+    {
+        _connectionString = connectionString;
     }
 
     [RelayCommand]
@@ -184,6 +201,83 @@ public partial class CosmosDbViewModel : ObservableObject
         }
     }
 
+    private async Task ExecuteQueryCoreAsync(string database, string container, string queryText, QueryResultEntry? targetEntry = null)
+    {
+        IsLoading = true;
+        StatusMessage = "Executing query...";
+        _continuationToken = null;
+
+        try
+        {
+            var queryResult = await _cosmosDbService.ExecuteQueryAsync(
+                _connectionString,
+                database,
+                container,
+                queryText);
+
+            _continuationToken = queryResult.ContinuationToken;
+            LastRequestCharge = queryResult.RequestCharge;
+            ResultCount = queryResult.Results.Count;
+
+            // Serialize results like the emulator
+            var json = JsonConvert.SerializeObject(queryResult.Results, Formatting.Indented);
+            QueryResults = json;
+
+            // Update existing entry or create a new one
+            QueryResultEntry entry;
+
+            if (targetEntry != null)
+            {
+                entry = targetEntry;
+                entry.ResultsJson = json;
+                entry.ResultCount = queryResult.Results.Count;
+                entry.RequestCharge = queryResult.RequestCharge;
+                entry.ExecutedAtUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                // Create a SavedQuery so this query is persisted in the configuration
+                SavedQuery? saved = null;
+                if (_configuration != null)
+                {
+                    saved = new SavedQuery
+                    {
+                        Name = $"Query {_configuration.SavedQueries.Count + 1}",
+                        Database = database,
+                        Container = container,
+                        Query = queryText
+                    };
+                    _configuration.SavedQueries.Add(saved);
+                }
+
+                entry = new QueryResultEntry
+                {
+                    Database = database,
+                    Container = container,
+                    QueryText = queryText,
+                    ResultsJson = json,
+                    ResultCount = queryResult.Results.Count,
+                    RequestCharge = queryResult.RequestCharge,
+                    ExecutedAtUtc = DateTime.UtcNow,
+                    SavedQuery = saved
+                };
+
+                QueryHistory.Insert(0, entry);
+            }
+
+            StatusMessage = $"Query completed. {ResultCount} results. RU charge: {LastRequestCharge:F2}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Query error: {ex.Message}";
+            QueryResults = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
     [RelayCommand]
     private async Task ExecuteQueryAsync()
     {
@@ -199,36 +293,7 @@ public partial class CosmosDbViewModel : ObservableObject
             return;
         }
 
-        IsLoading = true;
-        StatusMessage = "Executing query...";
-        _continuationToken = null;
-
-        try
-        {
-            var queryResult = await _cosmosDbService.ExecuteQueryAsync(
-                _connectionString,
-                SelectedDatabase,
-                SelectedContainer,
-                QueryText);
-
-            _continuationToken = queryResult.ContinuationToken;
-            LastRequestCharge = queryResult.RequestCharge;
-            ResultCount = queryResult.Results.Count;
-
-            // Use Newtonsoft.Json to serialize Cosmos results so they look
-            // like the emulator (including all properties and values).
-            QueryResults = JsonConvert.SerializeObject(queryResult.Results, Formatting.Indented);
-            StatusMessage = $"Query completed. {ResultCount} results. RU charge: {LastRequestCharge:F2}";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Query error: {ex.Message}";
-            QueryResults = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        await ExecuteQueryCoreAsync(SelectedDatabase, SelectedContainer, QueryText);
     }
 
     [RelayCommand]
@@ -250,7 +315,6 @@ public partial class CosmosDbViewModel : ObservableObject
             LastRequestCharge += queryResult.RequestCharge;
             ResultCount += queryResult.Results.Count;
 
-            // Append to existing results, serialized with Newtonsoft.Json
             var newResults = JsonConvert.SerializeObject(queryResult.Results, Formatting.Indented);
             QueryResults += "\n" + newResults;
             StatusMessage = $"Loaded more results. Total: {ResultCount}. Total RU: {LastRequestCharge:F2}";
@@ -266,51 +330,118 @@ public partial class CosmosDbViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SaveQuery(string queryName)
+    private async Task RunFromHistoryAsync(QueryResultEntry entry)
     {
-        if (string.IsNullOrWhiteSpace(queryName) || string.IsNullOrWhiteSpace(QueryText))
-            return;
-
-        var query = new SavedQuery
+        if (!IsConnected)
         {
-            Name = queryName,
-            Container = SelectedContainer ?? string.Empty,
-            Query = QueryText
+            StatusMessage = "Please connect first.";
+            return;
+        }
+
+        // Use entry's values if set, otherwise fall back to current selection
+        var databaseToUse = !string.IsNullOrEmpty(entry.Database) ? entry.Database : SelectedDatabase;
+        var containerToUse = !string.IsNullOrEmpty(entry.Container) ? entry.Container : SelectedContainer;
+        var queryToUse = entry.QueryText?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrEmpty(databaseToUse))
+        {
+            StatusMessage = "Please select a database first.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(containerToUse))
+        {
+            StatusMessage = "Please enter a container name.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(queryToUse))
+        {
+            StatusMessage = "Query text cannot be empty.";
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"Running query: DB={databaseToUse}, Container={containerToUse}, Query={queryToUse}");
+
+        // Update the UI selection if they exist in the lists
+        if (Databases.Contains(databaseToUse))
+        {
+            SelectedDatabase = databaseToUse;
+        }
+        if (Containers.Contains(containerToUse))
+        {
+            SelectedContainer = containerToUse;
+        }
+        QueryText = queryToUse;
+
+        // Update the entry with the values being used
+        entry.Database = databaseToUse;
+        entry.Container = containerToUse;
+
+        await ExecuteQueryCoreAsync(databaseToUse, containerToUse, queryToUse, entry);
+    }
+
+    [RelayCommand]
+    private void SaveHistory(QueryResultEntry entry)
+    {
+        entry.QueryText = entry.QueryText ?? string.Empty;
+
+        // Use currently selected database if entry doesn't have one
+        var databaseToSave = !string.IsNullOrEmpty(entry.Database) ? entry.Database : SelectedDatabase ?? string.Empty;
+
+        if (entry.SavedQuery == null && _configuration != null)
+        {
+            var saved = new SavedQuery
+            {
+                Name = $"Query {_configuration.SavedQueries.Count + 1}",
+                Database = databaseToSave,
+                Container = entry.Container,
+                Query = entry.QueryText
+            };
+            _configuration.SavedQueries.Add(saved);
+            entry.SavedQuery = saved;
+            entry.Database = databaseToSave;
+        }
+        else if (entry.SavedQuery != null)
+        {
+            entry.SavedQuery.Database = databaseToSave;
+            entry.SavedQuery.Query = entry.QueryText;
+            entry.SavedQuery.Container = entry.Container;
+            entry.SavedQuery.LastModified = DateTime.UtcNow;
+            entry.Database = databaseToSave;
+        }
+
+        StatusMessage = "Query saved.";
+    }
+
+    [RelayCommand]
+    private void DeleteHistory(QueryResultEntry entry)
+    {
+        if (entry.SavedQuery != null)
+        {
+            _configuration?.SavedQueries.Remove(entry.SavedQuery);
+        }
+
+        QueryHistory.Remove(entry);
+        StatusMessage = "Query deleted.";
+    }
+
+    [RelayCommand]
+    private void AddNewQuery((string database, string container) defaults)
+    {
+        var newEntry = new QueryResultEntry
+        {
+            Database = defaults.database,
+            Container = defaults.container,
+            QueryText = "SELECT * FROM c",
+            ResultsJson = string.Empty,
+            ResultCount = 0,
+            RequestCharge = 0,
+            ExecutedAtUtc = DateTime.UtcNow
         };
 
-        SavedQueries.Add(query);
-        _configuration?.SavedQueries.Add(query);
-        StatusMessage = $"Query saved: {queryName}";
-    }
-
-    [RelayCommand]
-    private void LoadQuery(SavedQuery query)
-    {
-        QueryText = query.Query;
-        if (!string.IsNullOrEmpty(query.Container) && Containers.Contains(query.Container))
-        {
-            SelectedContainer = query.Container;
-        }
-        SelectedQuery = query;
-    }
-
-    [RelayCommand]
-    private void DeleteQuery(SavedQuery query)
-    {
-        SavedQueries.Remove(query);
-        _configuration?.SavedQueries.Remove(query);
-        StatusMessage = $"Query deleted: {query.Name}";
-    }
-
-    [RelayCommand]
-    private void UpdateQuery()
-    {
-        if (SelectedQuery == null) return;
-
-        SelectedQuery.Query = QueryText;
-        SelectedQuery.Container = SelectedContainer ?? string.Empty;
-        SelectedQuery.LastModified = DateTime.UtcNow;
-        StatusMessage = $"Query updated: {SelectedQuery.Name}";
+        QueryHistory.Insert(0, newEntry);
+        StatusMessage = "New query added. Edit and click Run to execute.";
     }
 }
 

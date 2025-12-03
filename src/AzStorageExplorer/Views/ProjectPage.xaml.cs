@@ -88,6 +88,8 @@ public sealed partial class ProjectPage : UserControl
                 cosmosView.Initialize(ViewModel.Configuration.CosmosDb ?? new CosmosDbConfiguration(), 
                     ViewModel.GetConnectionString(StorageType.CosmosDb));
                 cosmosView.ConnectionStringChanged += (s, cs) => ViewModel.UpdateConnectionString(StorageType.CosmosDb, cs);
+                cosmosView.QuerySaved += async (s, e) => await SaveProjectIfPathKnownAsync();
+                cosmosView.QueryDeleted += async (s, e) => await SaveProjectIfPathKnownAsync();
                 ContentFrame.Content = cosmosView;
                 break;
                 
@@ -146,6 +148,18 @@ public sealed partial class ProjectPage : UserControl
 
         await _projectService.SaveProjectAsync(_filePath, ViewModel.Configuration);
         ViewModel.IsDirty = false;
+    }
+
+    /// <summary>
+    /// Saves the project directly if a file path is known. Does nothing if path is not set.
+    /// </summary>
+    public async Task SaveProjectIfPathKnownAsync()
+    {
+        if (!string.IsNullOrEmpty(_filePath))
+        {
+            await _projectService.SaveProjectAsync(_filePath, ViewModel.Configuration);
+            ViewModel.IsDirty = false;
+        }
     }
 }
 

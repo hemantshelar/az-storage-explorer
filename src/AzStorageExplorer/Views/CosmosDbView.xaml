@@ -4,11 +4,11 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:AzStorageExplorer.Views"
-    xmlns:controls="using:Microsoft.UI.Xaml.Controls">
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:models="using:AzStorageExplorer.Models">
     
     <Grid Background="{StaticResource AppBackgroundBrush}" Padding="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -75,137 +75,122 @@
             </Grid>
         </controls:Expander>
         
-        <!-- Query Section -->
-        <Grid Grid.Row="2" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="280" />
-            </Grid.ColumnDefinitions>
-            
-            <!-- Query Editor -->
-            <Grid Grid.Column="0" Margin="0,0,16,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                
-                <TextBlock Text="SQL Query" 
-                           Grid.Row="0"
-                           FontWeight="SemiBold"
-                           Foreground="{StaticResource AppTextBrush}"
-                           Margin="0,0,0,8" />
-                
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    
-                    <TextBox x:Name="QueryTextBox"
-                             Grid.Column="0"
-                             Text="SELECT * FROM c"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             MinHeight="80"
-                             MaxHeight="150"
-                             FontFamily="Cascadia Code, Consolas, monospace"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             Margin="0,0,12,0" />
-                    
-                    <StackPanel Grid.Column="1" Spacing="8">
-                        <Button x:Name="ExecuteButton"
-                                Content="Execute"
-                                Click="ExecuteButton_Click"
-                                Style="{StaticResource AccentButtonStyle}"
-                                MinWidth="100" />
-                        <Button x:Name="SaveQueryButton"
-                                Content="Save Query"
-                                Click="SaveQueryButton_Click"
-                                MinWidth="100" />
-                    </StackPanel>
-                </Grid>
-            </Grid>
-            
-            <!-- Saved Queries Panel -->
-            <Grid Grid.Column="1" Background="{StaticResource AppSurfaceBrush}" CornerRadius="8" Padding="12">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                
-                <TextBlock Text="Saved Queries" 
-                           Grid.Row="0"
-                           FontWeight="SemiBold"
-                           Foreground="{StaticResource AppTextBrush}"
-                           Margin="0,0,0,12" />
-                
-                <ListView x:Name="SavedQueriesList"
-                          Grid.Row="1"
-                          SelectionChanged="SavedQueriesList_SelectionChanged"
-                          MaxHeight="200">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Padding="8,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding Container}" 
-                                               FontSize="12" 
-                                               Foreground="{StaticResource AppSecondaryTextBrush}" />
-                                </StackPanel>
-                                
-                                <Button Grid.Column="1"
-                                        Content="&#xE74D;"
-                                        FontFamily="Segoe MDL2 Assets"
-                                        Background="Transparent"
-                                        Click="DeleteQueryButton_Click"
-                                        Tag="{Binding}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </Grid>
-        </Grid>
-        
-        <!-- Results Area -->
-        <Grid Grid.Row="3">
+        <!-- Queries Area -->
+        <Grid Grid.Row="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16" Margin="0,0,0,8">
-                <TextBlock Text="Results" 
+            <!-- Queries Header with New Query button -->
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0"
+                           Text="Queries"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource AppTextBrush}"
                            VerticalAlignment="Center" />
-                <TextBlock x:Name="ResultCountText" 
-                           Foreground="{StaticResource AppSecondaryTextBrush}"
-                           VerticalAlignment="Center" />
-                <TextBlock x:Name="RequestChargeText" 
-                           Foreground="{StaticResource AppSecondaryTextBrush}"
-                           VerticalAlignment="Center" />
-            </StackPanel>
-            
-            <ScrollViewer Grid.Row="1" 
-                          Background="{StaticResource AppSurfaceBrush}" 
+                
+                <Button Grid.Column="2"
+                        Click="NewQueryButton_Click"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Padding="12,6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                        <TextBlock Text="New Query" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1"
+                          Background="{StaticResource AppSurfaceBrush}"
                           CornerRadius="8"
-                          Padding="12">
-                <TextBlock x:Name="ResultsTextBlock"
-                           FontFamily="Cascadia Code, Consolas, monospace"
-                           FontSize="13"
-                           Foreground="{StaticResource AppTextBrush}"
-                           TextWrapping="Wrap"
-                           IsTextSelectionEnabled="True" />
+                          Padding="8">
+                <StackPanel>
+                    <!-- History of query results -->
+                    <ItemsControl x:Name="ResultsHistoryList"
+                                  ItemsSource="{Binding QueryHistory}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:QueryResultEntry">
+                                <controls:Expander IsExpanded="False" Margin="0,0,0,8">
+                                    <controls:Expander.Header>
+                                        <StackPanel Orientation="Vertical" Spacing="2">
+                                            <TextBlock Text="{x:Bind QueryText, Mode=OneWay}"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource AppTextBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Foreground="{StaticResource AppSecondaryTextBrush}"
+                                                       FontSize="12">
+                                                <Run Text="{x:Bind Database, Mode=OneWay}" />
+                                                <Run Text=" • " />
+                                                <Run Text="{x:Bind Container, Mode=OneWay}" />
+                                                <Run Text=" • " />
+                                                <Run Text="{x:Bind ResultCount, Mode=OneWay}" />
+                                                <Run Text=" items • RU " />
+                                                <Run Text="{x:Bind RequestChargeFormatted, Mode=OneWay}" />
+                                                <Run Text=" • " />
+                                                <Run Text="{x:Bind ExecutedAtLocal, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </controls:Expander.Header>
+                                    
+                                    <StackPanel Spacing="8">
+                                        <!-- Container selector -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Container:" 
+                                                       Foreground="{StaticResource AppSecondaryTextBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBox x:Name="EntryContainerBox"
+                                                     Text="{x:Bind Container, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     MinWidth="200"
+                                                     PlaceholderText="Enter container name" />
+                                        </StackPanel>
+                                        
+                                        <!-- Query editor -->
+                                        <TextBox Text="{x:Bind QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 MinHeight="60"
+                                                 FontFamily="Cascadia Code, Consolas, monospace" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Content="Run"
+                                                    Click="RunHistoryButton_Click"
+                                                    Tag="{x:Bind}"
+                                                    Style="{StaticResource AccentButtonStyle}" />
+                                            <Button Content="Save"
+                                                    Click="SaveHistoryButton_Click"
+                                                    Tag="{x:Bind}" />
+                                            <Button Content="Delete"
+                                                    Click="DeleteHistoryButton_Click"
+                                                    Tag="{x:Bind}" />
+                                        </StackPanel>
+                                        <ScrollViewer Background="{StaticResource AppSurfaceBrush}"
+                                                      Padding="8"
+                                                      HorizontalScrollMode="Auto"
+                                                      HorizontalScrollBarVisibility="Auto">
+                                            <TextBlock Text="{x:Bind ResultsJson, Mode=OneWay}"
+                                                       FontFamily="Cascadia Code, Consolas, monospace"
+                                                       FontSize="13"
+                                                       Foreground="{StaticResource AppTextBrush}"
+                                                       TextWrapping="NoWrap"
+                                                       IsTextSelectionEnabled="True" />
+                                        </ScrollViewer>
+                                    </StackPanel>
+                                </controls:Expander>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </ScrollViewer>
         </Grid>
         
         <!-- Status Bar -->
-        <Grid Grid.Row="4" Margin="0,12,0,0">
+        <Grid Grid.Row="3" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
