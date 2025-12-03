@@ -26,7 +26,8 @@
         </StackPanel>
         
         <!-- Connection Settings -->
-        <controls:Expander Grid.Row="1" 
+        <controls:Expander x:Name="ConnectionSettingsExpander"
+                           Grid.Row="1" 
                            Header="Connection Settings" 
                            IsExpanded="True"
                            HorizontalAlignment="Stretch"
@@ -75,8 +76,29 @@
             </Grid>
         </controls:Expander>
         
-        <!-- Queries Area -->
-        <Grid Grid.Row="2">
+        <!-- Not Connected Message -->
+        <Border Grid.Row="2" 
+                Background="{StaticResource AppSurfaceBrush}"
+                CornerRadius="8"
+                Padding="40"
+                Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <FontIcon Glyph="&#xE774;" FontSize="48" Foreground="{StaticResource AppSecondaryTextBrush}" />
+                <TextBlock Text="Connect to get started"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource AppTextBrush}"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Enter your connection string above and click Connect to browse your Cosmos DB data."
+                           Foreground="{StaticResource AppSecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           MaxWidth="400" />
+            </StackPanel>
+        </Border>
+        
+        <!-- Queries Area - Only visible when connected -->
+        <Grid Grid.Row="2" Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -110,44 +132,96 @@
             <ScrollViewer Grid.Row="1"
                           Background="{StaticResource AppSurfaceBrush}"
                           CornerRadius="8"
-                          Padding="8">
-                <StackPanel>
-                    <!-- History of query results -->
-                    <ItemsControl x:Name="ResultsHistoryList"
-                                  ItemsSource="{Binding QueryHistory}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:QueryResultEntry">
-                                <controls:Expander IsExpanded="False" Margin="0,0,0,8">
-                                    <controls:Expander.Header>
-                                        <StackPanel Orientation="Vertical" Spacing="2">
-                                            <TextBlock Text="{x:Bind QueryText, Mode=OneWay}"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{StaticResource AppTextBrush}"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Foreground="{StaticResource AppSecondaryTextBrush}"
-                                                       FontSize="12">
-                                                <Run Text="{x:Bind Database, Mode=OneWay}" />
-                                                <Run Text=" • " />
-                                                <Run Text="{x:Bind Container, Mode=OneWay}" />
-                                                <Run Text=" • " />
-                                                <Run Text="{x:Bind ResultCount, Mode=OneWay}" />
-                                                <Run Text=" items • RU " />
-                                                <Run Text="{x:Bind RequestChargeFormatted, Mode=OneWay}" />
-                                                <Run Text=" • " />
-                                                <Run Text="{x:Bind ExecutedAtLocal, Mode=OneWay}" />
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </controls:Expander.Header>
-                                    
-                                    <StackPanel Spacing="8">
+                          Padding="12"
+                          HorizontalScrollBarVisibility="Disabled">
+                <!-- Queries grouped by container -->
+                <ItemsControl x:Name="GroupedQueriesList"
+                              ItemsSource="{Binding GroupedQueries}"
+                              HorizontalAlignment="Stretch">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel HorizontalAlignment="Stretch" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:ContainerQueryGroup">
+                            <!-- Container Group Expander -->
+                            <controls:Expander IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}" 
+                                               Margin="0,0,0,12"
+                                               HorizontalAlignment="Stretch"
+                                               HorizontalContentAlignment="Stretch">
+                                <controls:Expander.Header>
+                                    <Grid HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Grid.Column="0" Glyph="&#xE838;" FontSize="16" 
+                                                  Foreground="{StaticResource AppHighlightBrush}" 
+                                                  Margin="0,0,8,0" />
+                                        <TextBlock Grid.Column="1" 
+                                                   Text="{x:Bind ContainerName, Mode=OneWay}"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="14"
+                                                   Foreground="{StaticResource AppTextBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" 
+                                                Background="{StaticResource AppHighlightBrush}"
+                                                CornerRadius="10"
+                                                Padding="8,2">
+                                            <TextBlock Text="{x:Bind QueryCount, Mode=OneWay}"
+                                                       FontSize="12"
+                                                       Foreground="White" />
+                                        </Border>
+                                    </Grid>
+                                </controls:Expander.Header>
+                                
+                                <!-- Queries in this container -->
+                                <ItemsControl ItemsSource="{x:Bind Queries, Mode=OneWay}"
+                                              HorizontalAlignment="Stretch"
+                                              Margin="0,8,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel HorizontalAlignment="Stretch" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:QueryResultEntry">
+                                            <!-- Individual Query Expander -->
+                                            <controls:Expander IsExpanded="False" 
+                                                               Margin="0,0,0,8"
+                                                               HorizontalAlignment="Stretch"
+                                                               HorizontalContentAlignment="Stretch">
+                                                <controls:Expander.Header>
+                                                    <Grid HorizontalAlignment="Stretch">
+                                                        <StackPanel Orientation="Vertical" Spacing="2">
+                                                            <TextBlock Text="{x:Bind QueryText, Mode=OneWay}"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource AppTextBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Foreground="{StaticResource AppSecondaryTextBrush}"
+                                                                       FontSize="12">
+                                                                <Run Text="{x:Bind ResultCount, Mode=OneWay}" />
+                                                                <Run Text=" items • RU " />
+                                                                <Run Text="{x:Bind RequestChargeFormatted, Mode=OneWay}" />
+                                                                <Run Text=" • " />
+                                                                <Run Text="{x:Bind ExecutedAtLocal, Mode=OneWay}" />
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </controls:Expander.Header>
+                                
+                                <Grid HorizontalAlignment="Stretch">
+                                    <StackPanel Spacing="12" HorizontalAlignment="Stretch">
                                         <!-- Container selector -->
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock Text="Container:" 
                                                        Foreground="{StaticResource AppSecondaryTextBrush}"
-                                                       VerticalAlignment="Center" />
-                                            <TextBox x:Name="EntryContainerBox"
-                                                     Text="{x:Bind Container, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     MinWidth="200"
+                                                       VerticalAlignment="Center"
+                                                       Width="80" />
+                                            <TextBox Text="{x:Bind Container, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     MinWidth="250"
                                                      PlaceholderText="Enter container name" />
                                         </StackPanel>
                                         
@@ -155,37 +229,157 @@
                                         <TextBox Text="{x:Bind QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                  AcceptsReturn="True"
                                                  TextWrapping="Wrap"
-                                                 MinHeight="60"
+                                                 MinHeight="80"
+                                                 HorizontalAlignment="Stretch"
                                                  FontFamily="Cascadia Code, Consolas, monospace" />
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <Button Content="Run"
-                                                    Click="RunHistoryButton_Click"
-                                                    Tag="{x:Bind}"
-                                                    Style="{StaticResource AccentButtonStyle}" />
-                                            <Button Content="Save"
-                                                    Click="SaveHistoryButton_Click"
-                                                    Tag="{x:Bind}" />
-                                            <Button Content="Delete"
-                                                    Click="DeleteHistoryButton_Click"
-                                                    Tag="{x:Bind}" />
-                                        </StackPanel>
-                                        <ScrollViewer Background="{StaticResource AppSurfaceBrush}"
-                                                      Padding="8"
-                                                      HorizontalScrollMode="Auto"
-                                                      HorizontalScrollBarVisibility="Auto">
-                                            <TextBlock Text="{x:Bind ResultsJson, Mode=OneWay}"
-                                                       FontFamily="Cascadia Code, Consolas, monospace"
-                                                       FontSize="13"
-                                                       Foreground="{StaticResource AppTextBrush}"
-                                                       TextWrapping="NoWrap"
-                                                       IsTextSelectionEnabled="True" />
-                                        </ScrollViewer>
+                                        
+                                        <!-- Action buttons and view toggle -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Action buttons -->
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                                <Button Content="Run"
+                                                        Click="RunHistoryButton_Click"
+                                                        Tag="{x:Bind}"
+                                                        Style="{StaticResource AccentButtonStyle}"
+                                                        MinWidth="80" />
+                                                <Button Content="Save"
+                                                        Click="SaveHistoryButton_Click"
+                                                        Tag="{x:Bind}"
+                                                        MinWidth="80" />
+                                                <Button Content="Delete"
+                                                        Click="DeleteHistoryButton_Click"
+                                                        Tag="{x:Bind}"
+                                                        MinWidth="80" />
+                                            </StackPanel>
+                                            
+                                            <!-- View toggle -->
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                                <Button Click="JsonViewButton_Click"
+                                                        Tag="{x:Bind}"
+                                                        ToolTipService.ToolTip="JSON View"
+                                                        Padding="8,6">
+                                                    <FontIcon Glyph="&#xE943;" FontSize="16" />
+                                                </Button>
+                                                <Button Click="TableViewButton_Click"
+                                                        Tag="{x:Bind}"
+                                                        IsEnabled="{x:Bind CanShowAsTable, Mode=OneWay}"
+                                                        ToolTipService.ToolTip="Table View (available for flat data)"
+                                                        Padding="8,6">
+                                                    <FontIcon Glyph="&#xE80A;" FontSize="16" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                        
+                                        <!-- Results area - JSON View -->
+                                        <Border Background="{StaticResource AppBackgroundBrush}"
+                                                CornerRadius="6"
+                                                Padding="12"
+                                                MinHeight="100"
+                                                MaxHeight="400"
+                                                Visibility="{x:Bind ShowJsonView, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <ScrollViewer HorizontalScrollMode="Auto"
+                                                          HorizontalScrollBarVisibility="Auto"
+                                                          VerticalScrollBarVisibility="Auto">
+                                                <TextBlock Text="{x:Bind ResultsJson, Mode=OneWay}"
+                                                           FontFamily="Cascadia Code, Consolas, monospace"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource AppTextBrush}"
+                                                           TextWrapping="NoWrap"
+                                                           IsTextSelectionEnabled="True" />
+                                            </ScrollViewer>
+                                        </Border>
+                                        
+                                        <!-- Results area - Table View -->
+                                        <Border Background="{StaticResource AppBackgroundBrush}"
+                                                CornerRadius="6"
+                                                MinHeight="100"
+                                                MaxHeight="400"
+                                                Visibility="{x:Bind ShowTableView, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <ScrollViewer HorizontalScrollMode="Auto"
+                                                          HorizontalScrollBarVisibility="Auto"
+                                                          VerticalScrollBarVisibility="Auto">
+                                                <StackPanel>
+                                                    <!-- Table Header -->
+                                                    <Border Background="{StaticResource AppSurfaceBrush}"
+                                                            BorderBrush="{StaticResource AppBorderBrush}"
+                                                            BorderThickness="0,0,0,2"
+                                                            Padding="4">
+                                                        <ItemsControl ItemsSource="{x:Bind TableColumns, Mode=OneWay}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <StackPanel Orientation="Horizontal" />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="x:String">
+                                                                    <Border Width="150" Padding="8,6">
+                                                                        <TextBlock Text="{x:Bind}" 
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="{StaticResource AppTextBrush}"
+                                                                                   FontSize="12"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   ToolTipService.ToolTip="{x:Bind}" />
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Border>
+                                                    
+                                                    <!-- Table Rows -->
+                                                    <ItemsControl ItemsSource="{x:Bind TableRows, Mode=OneWay}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border BorderBrush="{StaticResource AppBorderBrush}"
+                                                                        BorderThickness="0,0,0,1"
+                                                                        Padding="4"
+                                                                        Background="Transparent">
+                                                                    <ItemsControl ItemsSource="{Binding Values}">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate>
+                                                                                <StackPanel Orientation="Horizontal" />
+                                                                            </ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Border Width="150" Padding="8,6">
+                                                                                    <TextBlock Text="{Binding}" 
+                                                                                               Foreground="{StaticResource AppTextBrush}"
+                                                                                               FontSize="12"
+                                                                                               TextTrimming="CharacterEllipsis"
+                                                                                               IsTextSelectionEnabled="True"
+                                                                                               ToolTipService.ToolTip="{Binding}" />
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </ScrollViewer>
+                                        </Border>
                                     </StackPanel>
-                                </controls:Expander>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                                </Grid>
+                            </controls:Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                            </controls:Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </ScrollViewer>
         </Grid>
         

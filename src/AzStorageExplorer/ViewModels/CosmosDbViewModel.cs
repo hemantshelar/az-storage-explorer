@@ -49,12 +49,33 @@ public partial class CosmosDbViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<QueryResultEntry> _queryHistory = new();
+    
+    [ObservableProperty]
+    private ObservableCollection<ContainerQueryGroup> _groupedQueries = new();
 
     private string? _continuationToken;
 
     public CosmosDbViewModel()
     {
         _cosmosDbService = App.Services.GetRequiredService<ICosmosDbService>();
+        
+        // Update grouped queries when query history changes
+        _queryHistory.CollectionChanged += (s, e) => UpdateGroupedQueries();
+    }
+    
+    private void UpdateGroupedQueries()
+    {
+        // Group queries by container
+        var groups = QueryHistory
+            .GroupBy(q => string.IsNullOrEmpty(q.Container) ? "(No Container)" : q.Container)
+            .OrderBy(g => g.Key)
+            .Select(g => new ContainerQueryGroup(g.Key)
+            {
+                Queries = new ObservableCollection<QueryResultEntry>(g.ToList())
+            })
+            .ToList();
+        
+        GroupedQueries = new ObservableCollection<ContainerQueryGroup>(groups);
     }
 
     public void Initialize(CosmosDbConfiguration configuration, string connectionString)
@@ -223,6 +244,9 @@ public partial class CosmosDbViewModel : ObservableObject
             var json = JsonConvert.SerializeObject(queryResult.Results, Formatting.Indented);
             QueryResults = json;
 
+            // Parse for table view
+            var (canShowAsTable, columns, rows) = ParseResultsForTable(queryResult.Results);
+
             // Update existing entry or create a new one
             QueryResultEntry entry;
 
@@ -233,6 +257,9 @@ public partial class CosmosDbViewModel : ObservableObject
                 entry.ResultCount = queryResult.Results.Count;
                 entry.RequestCharge = queryResult.RequestCharge;
                 entry.ExecutedAtUtc = DateTime.UtcNow;
+                entry.CanShowAsTable = canShowAsTable;
+                entry.TableColumns = columns;
+                entry.TableRows = rows;
             }
             else
             {
@@ -259,7 +286,10 @@ public partial class CosmosDbViewModel : ObservableObject
                     ResultCount = queryResult.Results.Count,
                     RequestCharge = queryResult.RequestCharge,
                     ExecutedAtUtc = DateTime.UtcNow,
-                    SavedQuery = saved
+                    SavedQuery = saved,
+                    CanShowAsTable = canShowAsTable,
+                    TableColumns = columns,
+                    TableRows = rows
                 };
 
                 QueryHistory.Insert(0, entry);
@@ -275,6 +305,91 @@ public partial class CosmosDbViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Parses query results to determine if they can be displayed as a table.
+    /// Returns true if all items are flat objects with primitive values.
+    /// </summary>
+    private (bool canShowAsTable, List<string> columns, List<TableRow> rows) ParseResultsForTable(List<dynamic> results)
+    {
+        var columns = new List<string>();
+        var rows = new List<TableRow>();
+
+        if (results == null || results.Count == 0)
+        {
+            return (false, columns, rows);
+        }
+
+        try
+        {
+            // Collect all unique column names from all results
+            var allColumns = new HashSet<string>();
+            var parsedRows = new List<Dictionary<string, object?>>();
+
+            foreach (var item in results)
+            {
+                var itemDict = new Dictionary<string, object?>();
+                
+                // Convert dynamic to JObject for easier traversal
+                var jObj = item as Newtonsoft.Json.Linq.JObject;
+                if (jObj == null)
+                {
+                    // Try to convert
+                    var jsonStr = JsonConvert.SerializeObject(item);
+                    jObj = Newtonsoft.Json.Linq.JObject.Parse(jsonStr);
+                }
+
+                foreach (var prop in jObj.Properties())
+                {
+                    var value = prop.Value;
+                    
+                    // Check if value is a complex type (object or array)
+                    if (value.Type == Newtonsoft.Json.Linq.JTokenType.Object || 
+                        value.Type == Newtonsoft.Json.Linq.JTokenType.Array)
+                    {
+                        // Complex nested structure - can't show as simple table
+                        return (false, new List<string>(), new List<TableRow>());
+                    }
+
+                    allColumns.Add(prop.Name);
+                    itemDict[prop.Name] = value.Type == Newtonsoft.Json.Linq.JTokenType.Null 
+                        ? null 
+                        : value.ToString();
+                }
+
+                parsedRows.Add(itemDict);
+            }
+
+            // Sort columns - put common fields first, then alphabetically
+            var priorityColumns = new[] { "id", "name", "type", "status" };
+            columns = allColumns
+                .OrderBy(c => Array.IndexOf(priorityColumns, c.ToLower()) >= 0 
+                    ? Array.IndexOf(priorityColumns, c.ToLower()) 
+                    : 100)
+                .ThenBy(c => c)
+                .ToList();
+
+            // Build rows with values in column order
+            foreach (var parsedRow in parsedRows)
+            {
+                var row = new TableRow();
+                foreach (var col in columns)
+                {
+                    var value = parsedRow.TryGetValue(col, out var val) && val != null 
+                        ? val.ToString() ?? "" 
+                        : "";
+                    row.Values.Add(value);
+                }
+                rows.Add(row);
+            }
+
+            return (true, columns, rows);
+        }
+        catch
+        {
+            return (false, new List<string>(), new List<TableRow>());
         }
     }
 

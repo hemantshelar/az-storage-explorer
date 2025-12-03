@@ -15,6 +15,7 @@
             <converters:BlobIconConverter x:Key="BlobIconConverter" />
             <converters:FileSizeConverter x:Key="FileSizeConverter" />
             <converters:DateTimeConverter x:Key="DateTimeConverter" />
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
             
             <!-- App-wide styles -->
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1a1a2e" />

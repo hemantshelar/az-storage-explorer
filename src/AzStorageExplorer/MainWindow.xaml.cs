@@ -181,15 +181,86 @@ public sealed partial class MainWindow : Window
     {
         var projectPage = new ProjectPage(config, filePath);
         
+        // Create editable header
+        var headerGrid = new Grid();
+        
+        var headerText = new TextBlock
+        {
+            Text = config.Name,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        
+        var headerTextBox = new TextBox
+        {
+            Text = config.Name,
+            Visibility = Visibility.Collapsed,
+            MinWidth = 100,
+            Padding = new Thickness(4, 2, 4, 2),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        
+        headerGrid.Children.Add(headerText);
+        headerGrid.Children.Add(headerTextBox);
+        
         var tab = new TabViewItem
         {
-            Header = config.Name,
+            Header = headerGrid,
             IconSource = new SymbolIconSource { Symbol = Symbol.Document },
             Content = projectPage
         };
         
+        // Double-click to edit
+        headerText.DoubleTapped += (s, e) =>
+        {
+            headerText.Visibility = Visibility.Collapsed;
+            headerTextBox.Text = headerText.Text;
+            headerTextBox.Visibility = Visibility.Visible;
+            headerTextBox.Focus(FocusState.Programmatic);
+            headerTextBox.SelectAll();
+        };
+        
+        // Save on Enter or focus loss
+        headerTextBox.KeyDown += async (s, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                await SaveTabName(headerText, headerTextBox, config, projectPage);
+            }
+            else if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                // Cancel editing
+                headerTextBox.Visibility = Visibility.Collapsed;
+                headerText.Visibility = Visibility.Visible;
+            }
+        };
+        
+        headerTextBox.LostFocus += async (s, e) =>
+        {
+            if (headerTextBox.Visibility == Visibility.Visible)
+            {
+                await SaveTabName(headerText, headerTextBox, config, projectPage);
+            }
+        };
+        
         ProjectTabView.TabItems.Add(tab);
         ProjectTabView.SelectedItem = tab;
+    }
+    
+    private async Task SaveTabName(TextBlock headerText, TextBox headerTextBox, ProjectConfiguration config, ProjectPage projectPage)
+    {
+        var newName = headerTextBox.Text.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != config.Name)
+        {
+            config.Name = newName;
+            headerText.Text = newName;
+            
+            // Save the project if it has a file path
+            await projectPage.SaveProjectIfPathKnownAsync();
+            UpdateStatus($"Project renamed to: {newName}");
+        }
+        
+        headerTextBox.Visibility = Visibility.Collapsed;
+        headerText.Visibility = Visibility.Visible;
     }
 
     private void TabView_AddTabButtonClick(TabView sender, object args)

@@ -55,6 +55,13 @@ public sealed partial class CosmosDbView : UserControl
                 case nameof(_viewModel.StatusMessage):
                     StatusText.Text = _viewModel.StatusMessage;
                     break;
+                case nameof(_viewModel.IsConnected):
+                    // Collapse Connection Settings when connected
+                    if (_viewModel.IsConnected)
+                    {
+                        ConnectionSettingsExpander.IsExpanded = false;
+                    }
+                    break;
             }
         });
     }
@@ -109,6 +116,25 @@ public sealed partial class CosmosDbView : UserControl
         {
             _viewModel.DeleteHistoryCommand.Execute(entry);
             QueryDeleted?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void JsonViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is QueryResultEntry entry)
+        {
+            entry.ShowAsTable = false;
+        }
+    }
+
+    private void TableViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is QueryResultEntry entry)
+        {
+            if (entry.CanShowAsTable)
+            {
+                entry.ShowAsTable = true;
+            }
         }
     }
 }
