@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="AzStorageExplorer.Views.ProjectPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AzStorageExplorer.Views"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls">
+    
+    <Grid Background="{StaticResource AppBackgroundBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        
+        <!-- Left Sidebar - Configuration & Navigation -->
+        <Grid Grid.Column="0" Background="{StaticResource AppSurfaceBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            
+            <!-- Project Name -->
+            <StackPanel Grid.Row="0" Padding="16">
+                <TextBlock Text="Project Name" 
+                           FontSize="12" 
+                           Foreground="{StaticResource AppSecondaryTextBrush}"
+                           Margin="0,0,0,4" />
+                <TextBox x:Name="ProjectNameBox" 
+                         Text="{x:Bind ViewModel.Configuration.Name, Mode=TwoWay}"
+                         PlaceholderText="Enter project name..."
+                         TextChanged="ProjectNameBox_TextChanged" />
+            </StackPanel>
+            
+            <!-- Storage Type Selection -->
+            <StackPanel Grid.Row="1" Padding="16,0,16,16">
+                <TextBlock Text="Storage Types" 
+                           FontSize="12" 
+                           Foreground="{StaticResource AppSecondaryTextBrush}"
+                           Margin="0,0,0,8" />
+                <StackPanel Spacing="8">
+                    <CheckBox x:Name="CosmosDbCheck" 
+                              Content="Cosmos DB" 
+                              IsChecked="True"
+                              Checked="StorageTypeCheck_Changed"
+                              Unchecked="StorageTypeCheck_Changed"
+                              Tag="CosmosDb" />
+                    <CheckBox x:Name="BlobCheck" 
+                              Content="Blob Storage"
+                              Checked="StorageTypeCheck_Changed"
+                              Unchecked="StorageTypeCheck_Changed"
+                              Tag="Blob" />
+                    <CheckBox x:Name="TableCheck" 
+                              Content="Table Storage"
+                              Checked="StorageTypeCheck_Changed"
+                              Unchecked="StorageTypeCheck_Changed"
+                              Tag="Table" />
+                    <CheckBox x:Name="QueueCheck" 
+                              Content="Queue Storage"
+                              Checked="StorageTypeCheck_Changed"
+                              Unchecked="StorageTypeCheck_Changed"
+                              Tag="Queue" />
+                </StackPanel>
+            </StackPanel>
+            
+            <!-- Navigation Tree -->
+            <controls:NavigationView Grid.Row="2"
+                                      x:Name="StorageNavigation"
+                                      PaneDisplayMode="Left"
+                                      IsBackButtonVisible="Collapsed"
+                                      IsSettingsVisible="False"
+                                      IsPaneToggleButtonVisible="False"
+                                      OpenPaneLength="280"
+                                      SelectionChanged="StorageNavigation_SelectionChanged">
+                <controls:NavigationView.MenuItems>
+                    <controls:NavigationViewItem x:Name="CosmosDbNavItem" 
+                                                  Content="Cosmos DB" 
+                                                  Tag="CosmosDb">
+                        <controls:NavigationViewItem.Icon>
+                            <FontIcon Glyph="&#xE968;" />
+                        </controls:NavigationViewItem.Icon>
+                    </controls:NavigationViewItem>
+                    <controls:NavigationViewItem x:Name="BlobNavItem" 
+                                                  Content="Blob Storage" 
+                                                  Tag="Blob">
+                        <controls:NavigationViewItem.Icon>
+                            <FontIcon Glyph="&#xE8B7;" />
+                        </controls:NavigationViewItem.Icon>
+                    </controls:NavigationViewItem>
+                    <controls:NavigationViewItem x:Name="TableNavItem" 
+                                                  Content="Table Storage" 
+                                                  Tag="Table">
+                        <controls:NavigationViewItem.Icon>
+                            <FontIcon Glyph="&#xE80A;" />
+                        </controls:NavigationViewItem.Icon>
+                    </controls:NavigationViewItem>
+                    <controls:NavigationViewItem x:Name="QueueNavItem" 
+                                                  Content="Queue Storage" 
+                                                  Tag="Queue">
+                        <controls:NavigationViewItem.Icon>
+                            <FontIcon Glyph="&#xE756;" />
+                        </controls:NavigationViewItem.Icon>
+                    </controls:NavigationViewItem>
+                </controls:NavigationView.MenuItems>
+            </controls:NavigationView>
+        </Grid>
+        
+        <!-- Splitter -->
+        <Border Grid.Column="1" Width="1" Background="{StaticResource AppBorderBrush}" />
+        
+        <!-- Main Content Area -->
+        <Frame x:Name="ContentFrame" Grid.Column="2" />
+    </Grid>
+</UserControl>
+

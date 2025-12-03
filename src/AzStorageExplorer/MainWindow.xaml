@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="AzStorageExplorer.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AzStorageExplorer"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:views="using:AzStorageExplorer.Views"
+    Title="Azure Storage Explorer">
+    
+    <Grid Background="{StaticResource AppBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <!-- Title Bar / Menu -->
+        <Grid Grid.Row="0" Background="{StaticResource AppSurfaceBrush}" Padding="12,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE753;" FontSize="24" Foreground="{StaticResource AppHighlightBrush}" />
+                <TextBlock Text="Azure Storage Explorer" 
+                           FontSize="18" 
+                           FontWeight="SemiBold" 
+                           Foreground="{StaticResource AppTextBrush}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+            
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                <Button x:Name="NewProjectButton" 
+                        Click="NewProjectButton_Click"
+                        ToolTipService.ToolTip="New Project (Ctrl+N)"
+                        Background="Transparent"
+                        BorderThickness="0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                        <TextBlock Text="New" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="OpenProjectButton" 
+                        Click="OpenProjectButton_Click"
+                        ToolTipService.ToolTip="Open Project (Ctrl+O)"
+                        Background="Transparent"
+                        BorderThickness="0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE838;" FontSize="14" />
+                        <TextBlock Text="Open" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="SaveProjectButton" 
+                        Click="SaveProjectButton_Click"
+                        ToolTipService.ToolTip="Save Project (Ctrl+S)"
+                        Background="Transparent"
+                        BorderThickness="0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                        <TextBlock Text="Save" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+        
+        <!-- Main Content with Tabs -->
+        <controls:TabView x:Name="ProjectTabView"
+                          Grid.Row="1"
+                          AddTabButtonClick="TabView_AddTabButtonClick"
+                          TabCloseRequested="TabView_TabCloseRequested"
+                          IsAddTabButtonVisible="True"
+                          CanDragTabs="True"
+                          CanReorderTabs="True"
+                          TabWidthMode="Equal"
+                          CloseButtonOverlayMode="OnPointerOver"
+                          Background="{StaticResource AppBackgroundBrush}">
+            <controls:TabView.TabStripHeader>
+                <Grid Padding="8,4">
+                    <FontIcon Glyph="&#xE8F1;" FontSize="16" Foreground="{StaticResource AppSecondaryTextBrush}" />
+                </Grid>
+            </controls:TabView.TabStripHeader>
+        </controls:TabView>
+        
+        <!-- Status Bar -->
+        <Grid Grid.Row="2" Background="{StaticResource AppAccentBrush}" Padding="12,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock x:Name="StatusText" 
+                       Text="Ready" 
+                       Foreground="{StaticResource AppTextBrush}"
+                       FontSize="12" />
+            <TextBlock Grid.Column="1" 
+                       x:Name="ConnectionStatus"
+                       Text="No active connections" 
+                       Foreground="{StaticResource AppSecondaryTextBrush}"
+                       FontSize="12" />
+        </Grid>
+    </Grid>
+</Window>
+

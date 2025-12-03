@@ -1,0 +1,3 @@
+This folder contains application assets.
+Add app icons and other resources here.
+

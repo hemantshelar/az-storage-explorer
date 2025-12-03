@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="AzStorageExplorer.Views.QueueStorageView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AzStorageExplorer.Views"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls">
+    
+    <Grid Background="{StaticResource AppBackgroundBrush}" Padding="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
+            <FontIcon Glyph="&#xE756;" FontSize="28" Foreground="{StaticResource AppHighlightBrush}" />
+            <TextBlock Text="Queue Storage Explorer" 
+                       FontSize="24" 
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource AppTextBrush}"
+                       VerticalAlignment="Center" />
+        </StackPanel>
+        
+        <!-- Connection Settings -->
+        <controls:Expander Grid.Row="1" 
+                           Header="Connection Settings" 
+                           IsExpanded="True"
+                           HorizontalAlignment="Stretch"
+                           HorizontalContentAlignment="Stretch"
+                           Margin="0,0,0,16">
+            <Grid Padding="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                
+                <TextBox x:Name="ConnectionStringBox"
+                         Grid.Row="0" Grid.Column="0"
+                         PlaceholderText="Enter Storage Account connection string..."
+                         Margin="0,0,12,8"
+                         TextChanged="ConnectionStringBox_TextChanged" />
+                
+                <Button x:Name="ConnectButton"
+                        Grid.Row="0" Grid.Column="1"
+                        Content="Connect"
+                        Click="ConnectButton_Click"
+                        Style="{StaticResource AccentButtonStyle}" />
+                
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Queue:" 
+                                   Foreground="{StaticResource AppSecondaryTextBrush}"
+                                   VerticalAlignment="Center" />
+                        <ComboBox x:Name="QueueComboBox"
+                                  MinWidth="250"
+                                  SelectionChanged="QueueComboBox_SelectionChanged" />
+                    </StackPanel>
+                    
+                    <Button x:Name="RefreshButton" 
+                            Content="Refresh" 
+                            Click="RefreshButton_Click" />
+                </StackPanel>
+            </Grid>
+        </controls:Expander>
+        
+        <!-- Main Content -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="350" />
+            </Grid.ColumnDefinitions>
+            
+            <!-- Messages List -->
+            <Grid Grid.Column="0" Margin="0,0,16,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16" Margin="0,0,0,12">
+                    <TextBlock Text="Messages (Peek)" 
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AppTextBrush}"
+                               VerticalAlignment="Center" />
+                    <TextBlock x:Name="QueueCountText" 
+                               Foreground="{StaticResource AppSecondaryTextBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                
+                <ListView x:Name="MessagesList"
+                          Grid.Row="1"
+                          Background="{StaticResource AppSurfaceBrush}"
+                          CornerRadius="8"
+                          SelectionChanged="MessagesList_SelectionChanged">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="12,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                
+                                <FontIcon Grid.Column="0" Grid.RowSpan="2"
+                                          Glyph="&#xE715;"
+                                          Foreground="{StaticResource AppHighlightBrush}"
+                                          VerticalAlignment="Center" />
+                                
+                                <TextBlock Grid.Column="1" Grid.Row="0"
+                                           Text="{Binding MessageId}"
+                                           FontWeight="SemiBold"
+                                           FontSize="13" />
+                                
+                                <TextBlock Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding MessageText}"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1"
+                                           Foreground="{StaticResource AppSecondaryTextBrush}"
+                                           FontSize="12" />
+                                
+                                <StackPanel Grid.Column="2" Grid.RowSpan="2" 
+                                            VerticalAlignment="Center"
+                                            Spacing="2">
+                                    <TextBlock Text="{Binding InsertedOn, Converter={StaticResource DateTimeConverter}}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource AppSecondaryTextBrush}" />
+                                    <TextBlock FontSize="11"
+                                               Foreground="{StaticResource AppSecondaryTextBrush}">
+                                        <Run Text="Dequeue: " />
+                                        <Run Text="{Binding DequeueCount}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+            
+            <!-- Message Details Panel -->
+            <Grid Grid.Column="1" Background="{StaticResource AppSurfaceBrush}" CornerRadius="8" Padding="16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                
+                <TextBlock Text="Message Details" 
+                           Grid.Row="0"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource AppTextBrush}"
+                           Margin="0,0,0,12" />
+                
+                <!-- Properties -->
+                <StackPanel x:Name="MessagePropertiesPanel" Grid.Row="1" Spacing="8" Margin="0,0,0,16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="ID:" Foreground="{StaticResource AppSecondaryTextBrush}" Width="80" />
+                        <TextBlock x:Name="MessageIdText" IsTextSelectionEnabled="True" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Inserted:" Foreground="{StaticResource AppSecondaryTextBrush}" Width="80" />
+                        <TextBlock x:Name="MessageInsertedText" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Expires:" Foreground="{StaticResource AppSecondaryTextBrush}" Width="80" />
+                        <TextBlock x:Name="MessageExpiresText" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Dequeue:" Foreground="{StaticResource AppSecondaryTextBrush}" Width="80" />
+                        <TextBlock x:Name="MessageDequeueText" />
+                    </StackPanel>
+                </StackPanel>
+                
+                <!-- Message Content -->
+                <Grid Grid.Row="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Text="Content" 
+                               Grid.Row="0"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AppSecondaryTextBrush}"
+                               Margin="0,0,0,8" />
+                    
+                    <ScrollViewer Grid.Row="1" Background="{StaticResource AppBackgroundBrush}" CornerRadius="4" Padding="8">
+                        <TextBlock x:Name="MessageContentText"
+                                   FontFamily="Cascadia Code, Consolas, monospace"
+                                   FontSize="12"
+                                   Foreground="{StaticResource AppTextBrush}"
+                                   TextWrapping="Wrap"
+                                   IsTextSelectionEnabled="True" />
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Grid>
+        
+        <!-- Status Bar -->
+        <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <ProgressRing x:Name="LoadingRing" 
+                          IsActive="False" 
+                          Width="20" 
+                          Height="20"
+                          Margin="0,0,12,0" />
+            <TextBlock x:Name="StatusText" 
+                       Grid.Column="1"
+                       Foreground="{StaticResource AppSecondaryTextBrush}"
+                       VerticalAlignment="Center" />
+        </Grid>
+    </Grid>
+</UserControl>
+

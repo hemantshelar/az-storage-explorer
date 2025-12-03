@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="AzStorageExplorer.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AzStorageExplorer"
+    xmlns:converters="using:AzStorageExplorer.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Converters -->
+            <converters:BlobIconConverter x:Key="BlobIconConverter" />
+            <converters:FileSizeConverter x:Key="FileSizeConverter" />
+            <converters:DateTimeConverter x:Key="DateTimeConverter" />
+            
+            <!-- App-wide styles -->
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1a1a2e" />
+            <SolidColorBrush x:Key="AppAccentBrush" Color="#0f3460" />
+            <SolidColorBrush x:Key="AppHighlightBrush" Color="#e94560" />
+            <SolidColorBrush x:Key="AppTextBrush" Color="#eaeaea" />
+            <SolidColorBrush x:Key="AppSecondaryTextBrush" Color="#a0a0a0" />
+            <SolidColorBrush x:Key="AppSurfaceBrush" Color="#16213e" />
+            <SolidColorBrush x:Key="AppBorderBrush" Color="#2a2a4a" />
+            
+            <!-- Custom Button Style -->
+            <Style x:Key="AccentButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource AppHighlightBrush}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="16,8" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+
